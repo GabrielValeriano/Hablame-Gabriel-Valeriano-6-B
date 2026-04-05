@@ -1,74 +1,88 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Animated, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, Animated, StatusBar, Easing } from 'react-native';
 import { Audio } from 'expo-av';
 
-// Definimos los niveles con sus estilos específicos
 const NIVELES_GRITO = [
   { 
     umbral: -100, 
-    texto: "TE SUSURRO\nMI SECRETO..\nSILENCIO", 
-    colorT: "#888", 
-    colorF: "#050505",
-    style: {fontFamily: 'sans-serif-condensed', // Es la más gruesa y "apretada" por defecto
-    fontWeight: '900', 
-    fontSize: 50, // Tamaño masivo
-    letterSpacing: -5, // Letras que se enciman brutalmente
-    lineHeight: 45,
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 10,
+    texto: "Aunque te digan", 
+    colorT: "#555", // Un gris medio que se funde
+    colorF: "#000", 
+    style: {
+    fontFamily: 'sans-serif-thin',
+    fontSize: 38,
+    fontWeight: '100',
+    lineHeight: 50,
+    fontStyle: 'italic',
+    textTransform: 'lowercase', // El susurro nunca grita, siempre en minúsculas
     transform: [
-      { scaleX: 1.5 }, // Estiramos el texto a lo ancho
-      { scaleY: 2 }, // Lo estiramos a lo alto
-    ]} 
+      { scaleY: 0.85 }, // Ligeramente achatado
+      { skewX: '5deg' } // Una leve inclinación extra para dar inestabilidad
+    ]
+  }
   },
   { 
-    umbral: -55, 
-    texto: "TE ESTOY HABLO\nTRANQUILO\nACA NO TIENES QUE GRITAR", 
+    umbral: -40, 
+    texto: "Que hagas 'SILENCIO'\nPodes pedir", 
     colorT: "#000", 
     colorF: "#fff",
-    style: { fontFamily: 'sans-serif-condensed', fontSize: 40 ,fontWeight: '900', letterSpacing: -1 } 
+    style: { fontFamily: 'serif', fontWeight: '300', letterSpacing: -1, lineHeight: 55 } 
   },
   { 
-    umbral: -25, 
-    texto: "Siento que el Aire\nSe Acaba\nLas paredes se Cierran\nNo puedo Parar\nDe Gritar", 
+    umbral: -20, 
+    texto: "¡¡AYUDA!!", 
     colorT: "#fff", 
     colorF: "#FF4500",
-    style: {fontFamily: 'serif', // Limpia y moderna
-      fontWeight: '300', 
-      letterSpacing: -1,
-      lineHeight: 55,
-      } 
-  },
-  { 
-    umbral: -15, 
-    texto: "no puedo parar\nde gritar\nporque si me callo\ntodo se termina\ntodo es ruido\nnecesito hablar", 
-    colorT: "#fff", 
-    colorF: "#ff0000",
-    style: { fontFamily: 'sans-serif-thin', // La fuente más delgada disponible
-    fontWeight: '100', 
-    fontSize: 18, // Tamaño pequeño para que el usuario tenga que "acercarse" a leer
-    letterSpacing: 10, // Mucho espacio entre letras para que se sienta "aireado"
-    lineHeight: 80,
-    fontStyle: 'italic', // La inclinación le da una sensación de fragilidad
-    opacity: 0.8, // Semi-transparente para que realmente parezca escondida
-    textTransform: 'lowercase', // Todo en minúsculas suena más suave y silencioso
-    transform: [
-      { scaleY: 0.9 }, // La achatamos un poquito para que se vea más hundida
-    ] } 
+    style: {fontFamily: 'sans-serif-condensed', // El estilo Serif se ve más rígido y tenso
+      fontWeight: '900', 
+      letterSpacing: -2.5, // Letras chocándose para dar ANSIEDAD
+      transform: [{ skewX: '-15deg' }, { scaleY: 1.2 }], // Inclinación y estiramiento "incómodo"
+      textTransform: 'uppercase'
+    } 
   },
 ];
 
 const TEXTO_REPOSO = {
-  texto: "EL SILENCIO ESPERA...",
-    colorF: "#888", 
-    colorT: "#050505",
+  umbral: -160,
+  texto: "¿Porque no Gritas?",
+  colorF: "#888", 
+  colorT: "#050505",
   style: { fontWeight: '200', letterSpacing: 8 }
 };
 
 export default function App() {
   const [estado, setEstado] = useState<any>(TEXTO_REPOSO);
-  const [esRuido, setEsRuido] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
+
+  const volAnim = useRef(new Animated.Value(-100)).current;
+  
+  // 1. Nuevo valor animado para el LATIDO
+  const latidoAnim = useRef(new Animated.Value(1)).current;
+
+  // 2. Lógica del bucle de 4 segundos
+  useEffect(() => {
+    if (estado.umbral === -55) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(latidoAnim, {
+            toValue: 1.1, // Se agranda un 10%
+            duration: 1000, // 2 segundos subiendo
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(latidoAnim, {
+            toValue: 1, // 2 segundos bajando
+            duration: 1000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      // Si salimos del umbral, reseteamos a escala normal
+      latidoAnim.setValue(1);
+    }
+  }, [estado.umbral]);
 
   const startMonitoring = async () => {
     try {
@@ -76,7 +90,6 @@ export default function App() {
       if (status !== 'granted') return;
 
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       recordingRef.current = recording;
       await recording.setProgressUpdateInterval(50);
@@ -84,24 +97,17 @@ export default function App() {
       recording.setOnRecordingStatusUpdate((status) => {
         if (status.canRecord && status.metering !== undefined) {
           const vol = status.metering;
+          volAnim.setValue(vol);
 
-          // Si el volumen supera el umbral de "Susurro" (-100)
           if (vol > -100) {
             const nivel = [...NIVELES_GRITO].reverse().find(n => vol >= n.umbral);
-            if (nivel) {
-              setEstado(nivel);
-              setEsRuido(true);
-            }
+            if (nivel) setEstado(nivel);
           } else {
-            // Silencio absoluto
             setEstado(TEXTO_REPOSO);
-            setEsRuido(false);
           }
         }
       });
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   useEffect(() => {
@@ -109,19 +115,30 @@ export default function App() {
     return () => { recordingRef.current?.stopAndUnloadAsync(); };
   }, []);
 
+  const opacidadSusurro = volAnim.interpolate({
+    inputRange: [-100, -55],
+    outputRange: [0.1, 1],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={[styles.container, { backgroundColor: estado.colorF }]}>
       <StatusBar barStyle="light-content" />
       
-      <View key={esRuido ? "grito" : "silencio"}>
-        <Text style={[
-          styles.textBase, 
-          estado.style, 
-          { color: estado.colorT }
-        ]}>
+      <Animated.View 
+        style={{
+          opacity: estado.umbral === -100 ? opacidadSusurro : 1,
+          transform: [
+            // Aplicamos el latido solo si estamos en -55
+            { scale: estado.umbral === -55 ? latidoAnim : 1 },
+            ...(estado.style.transform || [])
+          ]
+        }}
+      >
+        <Text style={[styles.textBase, estado.style, { color: estado.colorT }]}>
           {estado.texto}
         </Text>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -134,7 +151,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   textBase: {
-    fontSize: 30, // Tamaño base que luego se modifica con el 'style' de cada nivel
+    fontSize: 30,
     textAlign: 'center', 
   }
 });
