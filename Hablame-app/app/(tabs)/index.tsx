@@ -55,34 +55,6 @@ export default function App() {
   const recordingRef = useRef<Audio.Recording | null>(null);
 
   const volAnim = useRef(new Animated.Value(-100)).current;
-  
-  // 1. Nuevo valor animado para el LATIDO
-  const latidoAnim = useRef(new Animated.Value(1)).current;
-
-  // 2. Lógica del bucle de 4 segundos
-  useEffect(() => {
-    if (estado.umbral === -55) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(latidoAnim, {
-            toValue: 1.1, // Se agranda un 10%
-            duration: 1000, // 2 segundos subiendo
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(latidoAnim, {
-            toValue: 1, // 2 segundos bajando
-            duration: 1000,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      // Si salimos del umbral, reseteamos a escala normal
-      latidoAnim.setValue(1);
-    }
-  }, [estado.umbral]);
 
   const startMonitoring = async () => {
     try {
@@ -128,11 +100,6 @@ export default function App() {
       <Animated.View 
         style={{
           opacity: estado.umbral === -100 ? opacidadSusurro : 1,
-          transform: [
-            // Aplicamos el latido solo si estamos en -55
-            { scale: estado.umbral === -55 ? latidoAnim : 1 },
-            ...(estado.style.transform || [])
-          ]
         }}
       >
         <Text style={[styles.textBase, estado.style, { color: estado.colorT }]}>
